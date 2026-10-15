@@ -1,0 +1,266 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Game</title>
+
+<style>
+    
+
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+
+    width: min(95vw, 800px);
+    aspect-ratio: 1 / 1;
+    height: auto;
+
+    margin: 20px auto;
+    border: 4px solid #111;
+    box-sizing: border-box;
+}
+
+.square {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+
+    font-size: clamp(24px, 5vw, 56px);
+    cursor: pointer;
+    user-select: none;
+    box-sizing: border-box;
+}
+
+
+
+.square {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: clamp(24px, 6vw, 52px);
+    cursor: pointer;
+    user-select: none;
+    box-sizing: border-box;
+}
+
+    body {
+        font-family: Arial, sans-serif;
+        background: #202124;
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        color: #f0d9b5;
+    }
+
+    #board {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        width: min(90vw, 480px);
+        aspect-ratio: 1;
+        margin: 20px auto;
+        border: 4px solid #111;
+    }
+
+    .square {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: clamp(24px, 8vw, 48px);
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .light { background: #f0d9b5; }
+    .dark { background: #b58863; }
+
+    .selected {
+        background: #f6f669 !important;
+    }
+
+    .legal {
+        box-shadow: inset 0 0 0 5px #6b9e55;
+    }
+
+    .white-piece {
+        color: white;
+        text-shadow: 1px 1px 2px black,
+                     -1px -1px 2px black;
+    }
+
+    .black-piece {
+        color: #171717;
+    }
+
+    #status {
+        font-size: 18px;
+        margin: 15px;
+    }
+
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 6px;
+        background: #f0d9b5;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>♟ Chess</h1>
+<div id="status">White's turn</div>
+<div id="board"></div>
+<button onclick="resetGame()">New Game</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+<script>
+const game = new Chess();
+
+const boardElement = document.getElementById("board");
+const statusElement = document.getElementById("status");
+
+const symbols = {
+    wk: "♔", wq: "♕", wr: "♖",
+    wb: "♗", wn: "♘", wp: "♙",
+    bk: "♚", bq: "♛", br: "♜",
+    bb: "♝", bn: "♞", bp: "♟"
+};
+
+let selectedSquare = null;
+let legalMoves = [];
+
+function drawBoard() {
+    boardElement.innerHTML = "";
+
+    const position = game.board();
+
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const square = document.createElement("div");
+            const squareName =
+                "abcdefgh"[col] + (8 - row);
+
+            square.className = "square " +
+                ((row + col) % 2 === 0 ? "light" : "dark");
+
+            const piece = position[row][col];
+
+            if (piece) {
+                const key =
+                    piece.color + piece.type;
+                square.textContent = symbols[key];
+                square.classList.add(
+                    piece.color === "w"
+                        ? "white-piece"
+                        : "black-piece"
+                );
+            }
+
+            if (selectedSquare === squareName) {
+                square.classList.add("selected");
+            }
+
+            if (legalMoves.some(
+                move => move.to === squareName
+            )) {
+                square.classList.add("legal");
+            }
+
+            square.addEventListener("click", () => {
+                handleClick(squareName);
+            });
+
+            boardElement.appendChild(square);
+        }
+    }
+
+    updateStatus();
+}
+
+function handleClick(square) {
+    if (game.isGameOver()) return;
+
+    if (selectedSquare) {
+        const move = game.move({
+            from: selectedSquare,
+            to: square,
+            promotion: "q"
+        });
+
+        if (move) {
+            selectedSquare = null;
+            legalMoves = [];
+            drawBoard();
+            return;
+        }
+    }
+
+    const piece = game.get(square);
+
+    if (piece && piece.color === game.turn()) {
+        selectedSquare = square;
+        legalMoves = game.moves({
+            square: square,
+            verbose: true
+        });
+    } else {
+        selectedSquare = null;
+        legalMoves = [];
+    }
+
+    drawBoard();
+}
+
+function updateStatus() {
+    if (game.isCheckmate()) {
+        statusElement.textContent =
+            "Checkmate! " +
+            (game.turn() === "w" ? "Black" : "White") +
+            " wins!";
+    } else if (game.isDraw()) {
+        statusElement.textContent = "Game drawn!";
+    } else if (game.inCheck()) {
+        statusElement.textContent =
+            (game.turn() === "w" ? "White" : "Black") +
+            " is in check!";
+    } else {
+        statusElement.textContent =
+            (game.turn() === "w" ? "White" : "Black") +
+            "'s turn";
+    }
+}
+
+function resetGame() {
+    game.reset();
+    selectedSquare = null;
+    legalMoves = [];
+    drawBoard();
+}
+
+drawBoard();
+</script>
+
+</body>
+</html>
